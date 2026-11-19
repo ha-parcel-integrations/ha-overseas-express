@@ -314,7 +314,9 @@ def _clean_raw(raw: dict) -> dict:
     ``contactPerson`` is an unmasked personal name; everything else stays.
     """
     details = raw.get("shipmentDetails")
-    consignee = details.get("consignee") if isinstance(details, dict) else None
+    if not isinstance(details, dict):
+        return raw
+    consignee = details.get("consignee")
     if not isinstance(consignee, dict) or "contactPerson" not in consignee:
         return raw
     cleaned_consignee = {k: v for k, v in consignee.items() if k != "contactPerson"}
@@ -332,9 +334,9 @@ def normalize_parcel(raw: dict, *, include_history: bool = False) -> dict:
     A ``raw`` without ``shipmentDetails`` is the coordinator's placeholder for
     a code the carrier does not know (yet): it reports ``unknown`` silently.
     """
-    details = raw.get("shipmentDetails")
-    placeholder = not isinstance(details, dict)
-    details = {} if placeholder else details
+    found = raw.get("shipmentDetails")
+    placeholder = not isinstance(found, dict)
+    details: dict = found if isinstance(found, dict) else {}
 
     barcode = raw.get("trackingNumber") or details.get("externalId")
     echoed = details.get("externalId")

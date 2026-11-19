@@ -117,7 +117,7 @@ class OverseasExpressApiClient:
             raise OverseasExpressApiError(f"resultCode {result_code}")
 
         details = payload.get("shipmentDetails") if isinstance(payload, dict) else None
-        if not isinstance(details, dict):
+        if not isinstance(payload, dict) or not isinstance(details, dict):
             warn_once(
                 "missing:shipmentDetails",
                 "response without shipmentDetails (resultCode=%s)",
