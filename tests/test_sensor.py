@@ -33,6 +33,7 @@ def _parcel(
     status: ParcelStatus = ParcelStatus.IN_TRANSIT,
     pickup: bool = False,
     planned_from: str | None = None,
+    planned_to: str | None = None,
 ) -> dict:
     return {
         "carrier": "Overseas Express",
@@ -42,6 +43,7 @@ def _parcel(
         "status": status,
         "pickup": pickup,
         "planned_from": planned_from,
+        "planned_to": planned_to,
     }
 
 
@@ -72,12 +74,12 @@ def test_parcel_sensor_missing_barcode():
 def test_next_delivery_picks_earliest():
     coordinator = _coordinator(
         [
-            _parcel("A", planned_from="2026-05-02T10:00:00Z"),
-            _parcel("B", planned_from="2026-05-01T10:00:00Z"),
+            _parcel("A", planned_from="2099-05-02T10:00:00Z"),
+            _parcel("B", planned_from="2099-05-01T10:00:00Z"),
         ]
     )
     sensor = OverseasExpressNextDeliverySensor(coordinator, _entry())
-    assert sensor.native_value == datetime(2026, 5, 1, 10, 0, tzinfo=UTC)
+    assert sensor.native_value == datetime(2099, 5, 1, 10, 0, tzinfo=UTC)
     assert sensor.extra_state_attributes["barcode"] == "B"
 
 
@@ -91,7 +93,7 @@ def test_next_delivery_skips_unparseable_moment():
     coordinator = _coordinator(
         [
             _parcel("A", planned_from="not-a-date"),
-            _parcel("B", planned_from="2026-05-01T10:00:00Z"),
+            _parcel("B", planned_from="2099-05-01T10:00:00Z"),
         ]
     )
     sensor = OverseasExpressNextDeliverySensor(coordinator, _entry())
@@ -145,3 +147,46 @@ def test_last_update_sensor():
     coordinator.last_success_time = moment
     sensor = OverseasExpressLastUpdateSensor(coordinator, _entry())
     assert sensor.native_value == moment
+
+
+def test_next_delivery_skips_an_ended_window():
+    coordinator = _coordinator(
+        [
+            _parcel(
+                "OLD",
+                planned_from="2000-01-01T10:00:00Z",
+                planned_to="2000-01-01T12:00:00Z",
+            ),
+            _parcel("MOMENT", planned_from="2000-01-02T10:00:00Z"),
+            _parcel("NEW", planned_from="2099-01-01T10:00:00Z"),
+        ]
+    )
+    sensor = OverseasExpressNextDeliverySensor(coordinator, _entry())
+    assert sensor.extra_state_attributes["barcode"] == "NEW"
+
+
+def test_next_delivery_keeps_a_window_still_open():
+    coordinator = _coordinator(
+        [
+            _parcel(
+                "OPEN",
+                planned_from="2000-01-01T10:00:00Z",
+                planned_to="2099-01-01T12:00:00Z",
+            )
+        ]
+    )
+    sensor = OverseasExpressNextDeliverySensor(coordinator, _entry())
+    assert sensor.extra_state_attributes["barcode"] == "OPEN"
+
+
+def test_en_route_excludes_returning():
+    coordinator = _coordinator(
+        [
+            _parcel("GOING", pickup=True),
+            _parcel("BACK", pickup=True, status=ParcelStatus.RETURNING),
+        ]
+    )
+    en_route = OverseasExpressEnRouteToPickupPointSensor(coordinator, _entry())
+    assert [p["barcode"] for p in en_route.extra_state_attributes["parcels"]] == [
+        "GOING"
+    ]

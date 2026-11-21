@@ -38,10 +38,11 @@ you act in one of these areas:
 - **Events and `_known_state` are built from the unfiltered delivered list.**
   The "keep N days / N parcels" option only trims `coordinator.delivered`; a
   parcel it leaves out must still fire `_parcel_delivered`.
-- **The optional pickup-point summaries are a pair.** A carrier that can tell
-  a parcel is destined for a pickup point exposes
-  `en_route_to_pickup_point` for `pickup is true` before it arrives; one that
-  can reach `ParcelStatus.AT_PICKUP_POINT` also exposes `awaiting_pickup`.
+- **The pickup-point summaries are a pair.** A carrier that can deliver to a
+  pickup point or locker exposes both `en_route_to_pickup_point` and
+  `awaiting_pickup`, even before a real parcel has shown the status or flag
+  (they read 0 until then; record it in `PENDING_*`). A carrier without pickup
+  points exposes neither and keeps `pickup` constantly False.
   See *Parcel contract* in `CONVENTIONS.md`. Say "pickup point", not
   "ServicePoint"/"parcel shop"/"locker", for the generic concept; the
   example carrier demonstrates both canonical sensors.
@@ -76,8 +77,22 @@ you act in one of these areas:
 - **Fields that are `None` on purpose:** `receiver` (the carrier masks it and
   leaves a person's name unmasked), `planned_from`/`planned_to`, `weight`,
   `dimensions`. These and `pickup_point` sit in `PENDING_CAPABILITIES` until a
-  real parcel shows them. `pickup`/`pickup_point` come from the parcel-shop
-  block when present (name and city only, every key guarded).
+  real parcel shows them. `planned_for_status` still runs over the empty
+  window, so a delivery time added later is emptied at the right statuses.
+- **Pickup:** the carrier delivers to parcel shops, terminals, counters and
+  lockers, so both `awaiting_pickup` and `en_route_to_pickup_point` exist and
+  read 0 until a real parcel reaches that state. `pickup` is `is_pickup()` over
+  the parcel-shop block (structured field first), then any event that maps to
+  `at_pickup_point`, so it stays true after collection. `pickup_point` is the
+  block's name and city (every key guarded), `None` unless `pickup`; it stays
+  `None` while the block is unseen.
+- **`delivered` is `status is DELIVERED`.** No back-at-sender signal is known,
+  so `returning` is never delivered. `delivered_at` is the newest delivery
+  event's time, else `None`.
+- **Divergence from the contract:** `pickup_point` carries the city as well as
+  the name ("name, city"), because the block's real shape is still unseen and
+  the city is the only locator it is known to hold; revisit once a real
+  parcel shows it.
 - **Privacy:** the consignee's contact person is removed from `raw` in
   `normalize_parcel`; the rest of the record stays. Diagnostics redact the
   entered code and every copy of it, plus the shipper and consignee blocks at
