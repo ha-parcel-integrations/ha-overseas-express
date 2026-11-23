@@ -85,7 +85,8 @@ you act in one of these areas:
   the parcel-shop block (structured field first), then any event that maps to
   `at_pickup_point`, so it stays true after collection. `pickup_point` is the
   block's name and city (every key guarded), `None` unless `pickup`; it stays
-  `None` while the block is unseen.
+  `None` while the block is unseen. A plain string in the block is the
+  delivery address of a parcel delivered by tour: no pickup signal.
 - **`delivered` is `status is DELIVERED`.** No back-at-sender signal is known,
   so `returning` is never delivered. `delivered_at` is the newest delivery
   event's time, else `None`.

@@ -118,9 +118,17 @@ _EVENT_MAP: dict[str, ParcelStatus] = _build_map(
 # The enum has no out-for-delivery value; this event code is the one signal.
 OUT_FOR_DELIVERY_EVENT = "TOUR"
 
-# Only this event type has been seen on the wire; anything else is logged once
-# so the vocabulary past announcement becomes visible.
-_SEEN_EVENT_TYPES = frozenset({"SaveShipment"})
+# Event types seen on the wire; anything else is logged once so the vocabulary
+# stays visible.
+_SEEN_EVENT_TYPES = frozenset(
+    {
+        "SaveShipment",
+        "UnloadAtPickupHub",
+        "LegacySystemInfo",
+        "CourierLeftFromBranch",
+        "Delivered",
+    }
+)
 
 # Keys already warned about, so each unseen value is logged only once per HA
 # session instead of on every poll.
@@ -398,6 +406,10 @@ def _current_status(raw: dict, details: dict) -> ParcelStatus:
 def _pickup_point(address: Any) -> tuple[bool, str | None]:
     """Return ``(route ends at a point, "name, city")`` from ``parcelShopAddress``."""
     if not address:
+        return False, None
+    if isinstance(address, str):
+        # A plain address line shows up on a parcel delivered by tour, so it
+        # carries no pickup signal.
         return False, None
     if not isinstance(address, dict):
         warn_once("parcelShopAddress:type", "parcelShopAddress of unexpected type")

@@ -155,6 +155,19 @@ def test_unseen_event_type_is_logged_once(caplog):
     assert caplog.text.count("event type=Sorted first seen") == 1
 
 
+def test_seen_event_types_are_not_logged(caplog):
+    sample = _parcel_with(
+        "Delivered",
+        event("DELY", "2026-11-23T09:00:00Z", "Delivered"),
+        event("TOUR", "2026-11-23T06:00:00Z", "CourierLeftFromBranch"),
+        event("ENTY", "2026-11-23T05:00:00Z", "LegacySystemInfo"),
+        event("INIT", "2026-11-20T12:00:00Z", "UnloadAtPickupHub"),
+    )
+    with caplog.at_level(logging.WARNING):
+        normalize_parcel(sample)
+    assert "first seen" not in caplog.text
+
+
 def test_barcode_is_the_entered_code_and_a_different_echo_is_logged(caplog):
     sample = created_sample()
     sample["trackingNumber"] = "1000000000001"
@@ -418,9 +431,19 @@ def test_parcel_shop_address_of_unseen_shape_is_guarded(caplog):
         parcel = normalize_parcel(sample)
     assert parcel["pickup"] is True
     assert parcel["pickup_point"] is None
-    sample["shipmentDetails"]["parcelShopAddress"] = "odd"
+    sample["shipmentDetails"]["parcelShopAddress"] = ["odd"]
     assert normalize_parcel(sample)["pickup_point"] is None
     assert "parcelShopAddress of unexpected type" in caplog.text
+
+
+def test_parcel_shop_address_string_is_no_pickup_signal(caplog):
+    sample = delivered_sample()
+    sample["shipmentDetails"]["parcelShopAddress"] = "Example Street 1, 10000, City"
+    with caplog.at_level(logging.WARNING):
+        parcel = normalize_parcel(sample)
+    assert parcel["pickup"] is False
+    assert parcel["pickup_point"] is None
+    assert "parcelShopAddress" not in caplog.text
 
 
 def test_pending_placeholder_is_unknown_and_silent(caplog):
