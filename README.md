@@ -40,6 +40,7 @@ A custom Home Assistant integration that tracks your [Overseas Express](https://
 - Summary sensors: incoming parcels, next delivery, recently delivered parcels
 - Read-only **Deliveries** calendar (stays empty until Overseas Express reports an expected delivery time)
 - `overseas_express.track_parcel` / `overseas_express.untrack_parcel` services, so a dashboard button can add a parcel
+- A `contents` field on every parcel, set in your own words with the `overseas_express.update_contents` service or the `contents` field of `overseas_express.track_parcel`; it titles the calendar event and shows on the next-delivery sensor
 - Events + device triggers for no-code automations (parcel registered, status changed, delivered)
 - Opt-in per-parcel status history
 - Manual refresh button and a diagnostic last-update sensor
@@ -161,8 +162,11 @@ Every payload is the full normalised parcel plus the hub's `device_id`. Events a
 
 | Service | Fields | Description |
 |---|---|---|
-| `overseas_express.track_parcel` | `tracking_code` | Start tracking a parcel |
+| `overseas_express.track_parcel` | `tracking_code`, optional `contents` | Start tracking a parcel, optionally noting what is in it |
 | `overseas_express.untrack_parcel` | `tracking_code` | Stop tracking a parcel |
+| `overseas_express.update_contents` | `tracking_code`, `contents` (optional) | Set what is in a parcel, tracked or not; an empty `contents` clears it. It titles the calendar event and shows on the next-delivery sensor |
+
+The `contents` text is stored locally, never sent to Overseas Express, and fills the parcel's `contents` field.
 
 ## Examples
 

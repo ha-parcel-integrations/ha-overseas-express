@@ -190,3 +190,10 @@ def test_en_route_excludes_returning():
     assert [p["barcode"] for p in en_route.extra_state_attributes["parcels"]] == [
         "GOING"
     ]
+
+
+def test_next_delivery_attributes_carry_contents():
+    parcel = _parcel("A", planned_from="2099-05-01T10:00:00Z")
+    parcel["contents"] = "Running shoes"
+    sensor = OverseasExpressNextDeliverySensor(_coordinator([parcel]), _entry())
+    assert sensor.extra_state_attributes["contents"] == "Running shoes"

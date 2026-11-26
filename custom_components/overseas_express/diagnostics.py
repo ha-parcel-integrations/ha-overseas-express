@@ -22,6 +22,7 @@ TO_REDACT = {
     "barcode",
     "sender",
     "receiver",
+    "contents",
     "url",
     "trackingNumber",
     # the entered code and every copy of it in the payload
